@@ -1,97 +1,165 @@
-# 🔧 Solución: Error "Table Document does not exist"
+# 🎯 GUÍA VISUAL: Solucionar Error de Base de Datos
 
-## 🎯 Problema
-El error indica que las tablas de la base de datos no existen. Esto sucede porque las migraciones de Prisma no se han ejecutado en tu base de datos de producción.
+![Diagrama del Problema y Solución](C:/Users/cesar.vergara/.gemini/antigravity/brain/cf9855a5-cf2e-486e-b4f2-53f2f0c0fe77/database_migration_solution_1766785083916.png)
+
+## 📊 Diagnóstico del Problema
 
 ```
-Error: The table `public.Document` does not exist in the current database.
-```
+❌ Error Actual:
+The table `public.Document` does not exist in the current database.
 
-## ✅ Soluciones (Elige una)
+🔍 Causa Raíz:
+No existen archivos de migración en backend/prisma/migrations/
+
+⚠️ Por qué falla Render:
+El comando "npx prisma migrate deploy" no encuentra migraciones que aplicar
+```
 
 ---
 
-### **Opción 1: Redeploy en Render (MÁS FÁCIL) ⭐**
+## 🛠️ SOLUCIÓN PASO A PASO
 
-Esta es la solución más simple y recomendada:
+### **Opción A: Script Automático (Recomendado)** ⭐
 
-1. **Ve a Render Dashboard**: https://dashboard.render.com
-2. **Selecciona tu servicio backend**: `api-intelligence-backend`
-3. **Click en "Manual Deploy"**
-4. **Selecciona "Deploy latest commit"**
-5. **Espera 5-10 minutos** mientras se ejecuta el build command que incluye:
-   ```bash
-   npm install && npx prisma generate && npx prisma migrate deploy
-   ```
+#### 1️⃣ Obtener DATABASE_URL desde Render
 
-Esto ejecutará automáticamente las migraciones y creará todas las tablas.
+1. Ve a: https://dashboard.render.com
+2. Click en tu base de datos PostgreSQL
+3. Pestaña **"Info"**
+4. Copia **"External Database URL"**
 
----
+```
+Ejemplo:
+postgresql://api_user:abc123xyz@dpg-xxxxx-a.oregon-postgres.render.com:5432/api_db
+```
 
-### **Opción 2: Ejecutar Migraciones Manualmente desde tu PC**
+#### 2️⃣ Configurar archivo .env
 
-Si prefieres ejecutar las migraciones desde tu computadora local:
-
-#### Paso 1: Crear archivo `.env` en la carpeta backend
-
-Crea el archivo `backend/.env` con el siguiente contenido:
+1. Abre: `backend/.env`
+2. Reemplaza la línea DATABASE_URL:
 
 ```env
-# Copia tu DATABASE_URL desde Render
-DATABASE_URL="postgresql://user:password@host:port/database?sslmode=require"
-
-# Otras variables (opcional para migraciones)
-PORT=8000
-JWT_SECRET=cambiar_por_secreto_super_seguro_123456
+DATABASE_URL="postgresql://api_user:abc123xyz@dpg-xxxxx-a.oregon-postgres.render.com:5432/api_db?sslmode=require"
 ```
 
-**IMPORTANTE**: Reemplaza `DATABASE_URL` con tu URL real de Render:
-- Ve a Render Dashboard
-- Selecciona tu base de datos PostgreSQL
-- Copia el "External Database URL" desde la pestaña "Info"
+> ⚠️ **IMPORTANTE**: Agrega `?sslmode=require` al final
 
-#### Paso 2: Crear la primera migración
+3. Guarda el archivo
 
-Abre una terminal en la carpeta `backend` y ejecuta:
+#### 3️⃣ Ejecutar el script de configuración
 
-```bash
+Abre PowerShell en la carpeta del proyecto:
+
+```powershell
 cd backend
-npx prisma migrate dev --name init
+.\setup-database.ps1
 ```
 
-Esto creará:
-- Una carpeta `prisma/migrations/` con la migración inicial
-- Todas las tablas en tu base de datos
+El script hará todo automáticamente:
+- ✅ Instalar dependencias
+- ✅ Generar cliente Prisma
+- ✅ Crear migración inicial
+- ✅ Aplicar migración a la base de datos
+- ✅ Crear todas las tablas
 
-#### Paso 3: Verificar que las tablas se crearon
+#### 4️⃣ Subir cambios a GitHub
 
 ```bash
-npx prisma studio
+git add backend/prisma/migrations/
+git add backend/.gitignore
+git commit -m "Add initial database migration"
+git push origin main
 ```
 
-Esto abrirá una interfaz web donde puedes ver todas tus tablas.
+#### 5️⃣ Esperar redeploy automático
+
+Render detectará el cambio y re-desplegará (5-10 minutos)
 
 ---
 
-### **Opción 3: Usar Prisma DB Push (Desarrollo rápido)**
+### **Opción B: Comandos Manuales**
 
-Si solo quieres crear las tablas sin generar archivos de migración:
+Si prefieres ejecutar los comandos uno por uno:
+
+```bash
+# 1. Navegar a backend
+cd backend
+
+# 2. Instalar dependencias
+npm install
+
+# 3. Generar cliente Prisma
+npx prisma generate
+
+# 4. Crear migración inicial
+npx prisma migrate dev --name init
+
+# 5. Verificar que funcionó
+npx prisma studio
+
+# 6. Subir a GitHub
+git add prisma/migrations/
+git commit -m "Add initial database migration"
+git push origin main
+```
+
+---
+
+### **Opción C: Solución Ultra-Rápida (db push)**
+
+Si tienes prisa y quieres crear las tablas inmediatamente:
 
 ```bash
 cd backend
 npx prisma db push
 ```
 
-> ⚠️ **Advertencia**: `db push` es útil para desarrollo, pero para producción se recomienda usar migraciones (`migrate deploy`).
+> ⚠️ **Nota**: Después aún debes crear la migración para Render (Opción A o B)
 
 ---
 
-## 🔍 Verificar que funcionó
+## � Estructura Esperada Después
 
-Después de ejecutar cualquiera de las opciones anteriores:
+```
+backend/
+├── prisma/
+│   ├── schema.prisma          ✅ (ya existe)
+│   └── migrations/            ✅ (se creará)
+│       └── 20251226_init/     ✅ (nueva)
+│           └── migration.sql  ✅ (nueva)
+├── .env                       ✅ (configurado)
+├── .gitignore                 ✅ (creado)
+└── setup-database.ps1         ✅ (creado)
+```
 
-### 1. Verificar el Backend
-Visita: `https://tu-backend.onrender.com/health`
+---
+
+## ✅ Verificación
+
+### 1. Verificar Localmente
+
+```bash
+cd backend
+npx prisma studio
+```
+
+Deberías ver 8 tablas:
+- ✅ Document
+- ✅ Api
+- ✅ Endpoint
+- ✅ Credential
+- ✅ ApiExecution
+- ✅ Insight
+- ✅ Report
+- ✅ AiModelConfig
+
+### 2. Verificar en Producción
+
+Después del redeploy de Render:
+
+```
+https://api-intelligence-platform.onrender.com/health
+```
 
 Deberías ver:
 ```json
@@ -102,69 +170,132 @@ Deberías ver:
 }
 ```
 
-### 2. Probar subir un PDF
-Ve a tu frontend y sube un PDF de prueba. Ya no debería aparecer el error.
+### 3. Probar Subida de PDF
+
+Ve a tu frontend y sube un PDF. El error debería desaparecer.
 
 ---
 
-## 📋 Comandos Útiles de Prisma
+## 🐛 Solución de Problemas
 
+### Error: "Environment variable not found: DATABASE_URL"
+
+**Causa**: El archivo `.env` no existe o está mal configurado
+
+**Solución**:
+1. Verifica que `backend/.env` existe
+2. Verifica que contiene `DATABASE_URL="..."`
+3. Asegúrate de que la URL es real (no el placeholder)
+
+---
+
+### Error: "Can't reach database server"
+
+**Causa**: Problemas de conexión a la base de datos
+
+**Solución**:
+1. Verifica que DATABASE_URL sea correcta
+2. Asegúrate de incluir `?sslmode=require` al final
+3. Verifica que tu base de datos esté activa en Render
+4. Verifica tu conexión a internet
+
+---
+
+### Error: "Migration failed"
+
+**Causa**: Problemas al aplicar la migración
+
+**Solución rápida**:
 ```bash
-# Ver el estado de las migraciones
-npx prisma migrate status
+# Usar db push en su lugar
+npx prisma db push
 
-# Generar el cliente de Prisma (después de cambios en schema.prisma)
-npx prisma generate
-
-# Aplicar migraciones pendientes en producción
-npx prisma migrate deploy
-
-# Abrir Prisma Studio para ver los datos
-npx prisma studio
-
-# Resetear la base de datos (⚠️ BORRA TODOS LOS DATOS)
-npx prisma migrate reset
+# Luego crear la migración
+npx prisma migrate dev --name init
 ```
 
 ---
 
-## 🐛 Problemas Comunes
+### El error persiste después del redeploy
 
-### Error: "Environment variable not found: DATABASE_URL"
-**Solución**: Crea el archivo `.env` en la carpeta `backend` con tu `DATABASE_URL`
+**Causa**: Las migraciones no se subieron a GitHub
 
-### Error: "Can't reach database server"
-**Solución**: 
-- Verifica que tu `DATABASE_URL` sea correcta
-- Asegúrate de incluir `?sslmode=require` al final
-- Verifica que tu IP no esté bloqueada por Render
+**Verificar**:
+```bash
+git status
+```
 
-### Error: "Migration failed"
-**Solución**:
-- Verifica que tu base de datos esté activa en Render
-- Revisa los logs en Render Dashboard
-- Intenta con `npx prisma db push` primero
+Deberías ver:
+```
+nothing to commit, working tree clean
+```
 
----
-
-## 📝 Notas Importantes
-
-1. **No subas el archivo `.env` a GitHub** - Ya está en `.gitignore`
-2. **Las migraciones solo necesitan ejecutarse una vez** por cada cambio en `schema.prisma`
-3. **En producción (Render)**, las migraciones se ejecutan automáticamente con el build command
-4. **Si cambias `schema.prisma`**, debes crear una nueva migración:
-   ```bash
-   npx prisma migrate dev --name descripcion_del_cambio
-   ```
+Si ves archivos sin commit:
+```bash
+git add backend/prisma/migrations/
+git commit -m "Add migrations"
+git push origin main
+```
 
 ---
 
-## 🎯 Recomendación
+## 📊 Diagrama de Flujo
 
-**Para resolver tu error actual**: Usa la **Opción 1** (Redeploy en Render) - es la más simple y segura.
-
-**Para desarrollo futuro**: Configura el archivo `.env` local para poder ejecutar migraciones desde tu PC.
+```mermaid
+graph TD
+    A[Inicio] --> B{¿Existe .env?}
+    B -->|No| C[Crear .env con DATABASE_URL]
+    B -->|Sí| D{¿DATABASE_URL configurada?}
+    C --> D
+    D -->|No| E[Editar .env con URL real]
+    D -->|Sí| F[Ejecutar setup-database.ps1]
+    E --> F
+    F --> G{¿Migración exitosa?}
+    G -->|No| H[Verificar DATABASE_URL]
+    G -->|Sí| I[git add migrations/]
+    H --> F
+    I --> J[git commit y push]
+    J --> K[Esperar redeploy en Render]
+    K --> L[Verificar /health endpoint]
+    L --> M{¿Funciona?}
+    M -->|No| N[Revisar logs de Render]
+    M -->|Sí| O[✅ ¡Problema resuelto!]
+```
 
 ---
 
-¿Necesitas más ayuda? Revisa la documentación de Prisma: https://www.prisma.io/docs/concepts/components/prisma-migrate
+## 🎯 Checklist Final
+
+Antes de considerar el problema resuelto:
+
+- [ ] Archivo `.env` configurado con DATABASE_URL real
+- [ ] Ejecutado `npx prisma migrate dev --name init`
+- [ ] Carpeta `backend/prisma/migrations/` existe
+- [ ] Migraciones subidas a GitHub (`git push`)
+- [ ] Render re-desplegado automáticamente
+- [ ] Endpoint `/health` responde correctamente
+- [ ] Subida de PDF funciona sin errores
+
+---
+
+## 📞 ¿Necesitas Ayuda?
+
+Si algún paso falla, comparte:
+1. El comando exacto que ejecutaste
+2. El error completo que recibiste
+3. El contenido de tu `.env` (sin mostrar la contraseña)
+
+---
+
+## 🚀 Tiempo Estimado
+
+- **Configuración inicial**: 2-3 minutos
+- **Ejecución del script**: 1-2 minutos
+- **Git commit y push**: 1 minuto
+- **Redeploy en Render**: 5-10 minutos
+
+**Total**: ~15 minutos
+
+---
+
+¡Éxito! 🎉
