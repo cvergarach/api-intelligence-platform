@@ -332,9 +332,27 @@ async function buildHeaders(api, method = 'GET') {
   // Handle session-based authentication
   if (api.authType === 'session') {
     console.log(`🔑 [BUILD-HEADERS] Autenticación de sesión detectada`);
-    const token = await authenticateSession(api);
-    headers[api.tokenHeaderName] = token;
-    console.log(`🔑 [BUILD-HEADERS] Token agregado al header '${api.tokenHeaderName}'`);
+
+    // Check if session credentials are configured
+    const sessionCreds = await prisma.credential.findMany({
+      where: {
+        apiId: api.id,
+        isActive: true,
+        type: 'session'
+      }
+    });
+
+    const hasUsername = sessionCreds.some(c => c.key === 'username');
+    const hasPassword = sessionCreds.some(c => c.key === 'password');
+
+    if (hasUsername && hasPassword) {
+      const token = await authenticateSession(api);
+      headers[api.tokenHeaderName] = token;
+      console.log(`🔑 [BUILD-HEADERS] Token agregado al header '${api.tokenHeaderName}'`);
+    } else {
+      console.log(`⚠️  [BUILD-HEADERS] Credenciales de sesión no configuradas, continuando sin auth`);
+    }
+
     return headers;
   }
 
