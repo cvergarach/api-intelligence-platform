@@ -25,7 +25,7 @@ export default function ExecutionModal({ endpoint, api, onClose, onExecute }) {
         const required = params.required || [];
         const optional = params.optional || [];
 
-        const credentialKeywords = ['token', 'key', 'secret', 'apikey', 'api_key', 'ticket', 'auth', 'password', 'pwd'];
+        const credentialKeywords = ['token', 'key', 'secret', 'apikey', 'api_key', 'ticket', 'auth', 'password', 'pwd', 'username', 'user', 'usuario'];
         const variableKeywords = ['id', 'codigo', 'code', 'number', 'fecha', 'date', 'query', 'search', 'filter'];
 
         const credentialParams = [];
@@ -115,10 +115,13 @@ export default function ExecutionModal({ endpoint, api, onClose, onExecute }) {
             // Guardar en localStorage
             localStorage.setItem(`credentials_${api.id}`, JSON.stringify(credentials));
 
+            // Detectar tipo de credencial
+            const credentialType = api.authType === 'session' ? 'session' : 'apikey';
+
             // Guardar en backend
             await axios.post(`${API_URL}/api/apis/${api.id}/credentials`, {
                 credentials: Object.entries(credentials).map(([key, value]) => ({
-                    type: 'apikey',
+                    type: credentialType,
                     key: key,
                     value: value
                 }))

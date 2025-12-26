@@ -30,7 +30,15 @@ model Api {
   name            String
   baseUrl         String
   description     String?  @db.Text
-  authType        String   // 'apikey', 'oauth', 'bearer', 'basic', 'custom'
+  authType        String   // 'apikey', 'oauth', 'bearer', 'basic', 'custom', 'session'
+  
+  // Session-based authentication fields
+  authEndpoint    String?  // e.g., "/rest/plat/smapp/v1/sessions"
+  authMethod      String?  // e.g., "PUT", "POST"
+  authPayload     Json?    // Template for auth request body
+  tokenPath       String?  // JSON path to token in response (e.g., "accessSession")
+  tokenHeaderName String?  // Header name for token (e.g., "X-Auth-Token")
+  
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   

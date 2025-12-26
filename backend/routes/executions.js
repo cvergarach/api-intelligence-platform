@@ -6,6 +6,9 @@ import aiService from '../services/aiService.js';
 
 const router = express.Router();
 
+// Token cache for session-based authentication
+// Structure: { apiId: { token: string, expiresAt: timestamp } }
+const tokenCache = new Map();
 // 1. EJECUTAR ENDPOINT
 router.post('/execute/:endpointId', async (req, res) => {
   console.log(`\n🚀 [EXECUTE] ========================================`);
@@ -326,12 +329,26 @@ async function buildHeaders(api, method = 'GET') {
     headers['Content-Type'] = 'application/json';
   }
 
+  // Handle session-based authentication
+  if (api.authType === 'session') {
+    console.log(`🔑 [BUILD-HEADERS] Autenticación de sesión detectada`);
+    const token = await authenticateSession(api);
+    headers[api.tokenHeaderName] = token;
+    console.log(`🔑 [BUILD-HEADERS] Token agregado al header '${api.tokenHeaderName}'`);
+    return headers;
+  }
+
+  // Handle other auth types
   if (api.credentials && api.credentials.length > 0) {
     for (const credential of api.credentials) {
       switch (credential.type) {
         case 'apikey':
           // NO agregar apikey a headers - va en query params
           console.log(`🔑 [BUILD-HEADERS] Saltando apikey '${credential.key}' (va en query params)`);
+          break;
+        case 'session':
+          // Session credentials are handled above
+          console.log(`🔑 [BUILD-HEADERS] Saltando session credential '${credential.key}' (manejado por authenticateSession)`);
           break;
         case 'bearer':
           headers['Authorization'] = `Bearer ${await decryptValue(credential.value)}`;
@@ -440,6 +457,129 @@ async function executeEndpointWithGeneratedParams(endpoint, api, modelKey) {
     parameters: paramResult.parameters,
     response: response.data
   };
+}
+
+// SESSION AUTHENTICATION HELPERS
+
+// Authenticate and get session token
+async function authenticateSession(api) {
+  console.log(`\n🔐 [SESSION-AUTH] ========================================`);
+  console.log(`🔐 [SESSION-AUTH] API: ${api.name}`);
+
+  // Check if token is cached and valid
+  const cached = tokenCache.get(api.id);
+  if (cached && cached.expiresAt > Date.now()) {
+    console.log(`✅ [SESSION-AUTH] Token en caché válido`);
+    console.log(`🔐 [SESSION-AUTH] ========================================\n`);
+    return cached.token;
+  }
+
+  console.log(`🔐 [SESSION-AUTH] Token no disponible o expirado, autenticando...`);
+
+  // Get session credentials (username and password)
+  const credentials = await prisma.credential.findMany({
+    where: {
+      apiId: api.id,
+      isActive: true,
+      type: 'session'
+    }
+  });
+
+  const username = credentials.find(c => c.key === 'username')?.value;
+  const password = credentials.find(c => c.key === 'password')?.value;
+
+  if (!username || !password) {
+    throw new Error('Credenciales de sesión no configuradas (username/password)');
+  }
+
+  console.log(`🔐 [SESSION-AUTH] Credenciales encontradas`);
+  console.log(`🔐 [SESSION-AUTH] Auth endpoint: ${api.authEndpoint}`);
+  console.log(`🔐 [SESSION-AUTH] Auth method: ${api.authMethod}`);
+
+  // Build auth URL
+  let authUrl = api.baseUrl.replace(/\/+$/, '');
+  authUrl = authUrl.replace(/^http:/, 'https:');
+  authUrl = `${authUrl}${api.authEndpoint}`;
+
+  console.log(`🔐 [SESSION-AUTH] Auth URL: ${authUrl}`);
+
+  // Replace template variables in auth payload
+  const authPayload = replaceTemplateVars(api.authPayload, {
+    username,
+    password
+  });
+
+  console.log(`🔐 [SESSION-AUTH] Auth payload:`, JSON.stringify(authPayload, null, 2));
+
+  // Execute auth request
+  try {
+    const response = await axios({
+      method: api.authMethod,
+      url: authUrl,
+      data: authPayload,
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': 'APIIntelligencePlatform/1.0'
+      },
+      timeout: 30000
+    });
+
+    console.log(`✅ [SESSION-AUTH] Autenticación exitosa`);
+    console.log(`🔐 [SESSION-AUTH] Response:`, JSON.stringify(response.data, null, 2));
+
+    // Extract token from response
+    const token = extractTokenFromResponse(response.data, api.tokenPath);
+
+    if (!token) {
+      throw new Error(`Token no encontrado en la respuesta (buscando en: ${api.tokenPath})`);
+    }
+
+    console.log(`✅ [SESSION-AUTH] Token extraído: ${token.substring(0, 20)}...`);
+
+    // Cache token (30 minutes default)
+    const expiresAt = Date.now() + (30 * 60 * 1000);
+    tokenCache.set(api.id, { token, expiresAt });
+
+    console.log(`✅ [SESSION-AUTH] Token cacheado hasta: ${new Date(expiresAt).toISOString()}`);
+    console.log(`🔐 [SESSION-AUTH] ========================================\n`);
+
+    return token;
+  } catch (error) {
+    console.error(`❌ [SESSION-AUTH] Error en autenticación:`, error.message);
+    console.error(`🔐 [SESSION-AUTH] ========================================\n`);
+    throw new Error(`Autenticación de sesión falló: ${error.message}`);
+  }
+}
+
+// Extract token from response using JSON path
+function extractTokenFromResponse(responseData, tokenPath) {
+  if (!tokenPath) return null;
+
+  // Simple JSON path support (e.g., "accessSession" or "data.token")
+  const parts = tokenPath.split('.');
+  let value = responseData;
+
+  for (const part of parts) {
+    if (value && typeof value === 'object' && part in value) {
+      value = value[part];
+    } else {
+      return null;
+    }
+  }
+
+  return typeof value === 'string' ? value : null;
+}
+
+// Replace template variables in object
+function replaceTemplateVars(template, vars) {
+  const json = JSON.stringify(template);
+  let replaced = json;
+
+  for (const [key, value] of Object.entries(vars)) {
+    replaced = replaced.replace(new RegExp(`\\{${key}\\}`, 'g'), value);
+  }
+
+  return JSON.parse(replaced);
 }
 
 export default router;

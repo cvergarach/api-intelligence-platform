@@ -109,9 +109,21 @@ Responde en formato JSON con esta estructura EXACTA:
   "apis": [
     {
       "name": "Nombre de la API",
-      "baseUrl": "URL base de la API",
+      "baseUrl": "URL base de la API (usar HTTPS si está disponible)",
       "description": "Descripción de qué hace",
-      "authType": "apikey|oauth|bearer|basic|custom",
+      "authType": "apikey|oauth|bearer|basic|custom|session",
+      
+      // SOLO si authType es "session" (autenticación de 2 pasos):
+      "authEndpoint": "/ruta/para/autenticar",
+      "authMethod": "PUT|POST",
+      "authPayload": {
+        "grantType": "password",
+        "userName": "{username}",
+        "value": "{password}"
+      },
+      "tokenPath": "accessSession",
+      "tokenHeaderName": "X-Auth-Token",
+      
       "endpoints": [
         {
           "path": "/ruta/endpoint",
@@ -127,6 +139,13 @@ Responde en formato JSON con esta estructura EXACTA:
     }
   ]
 }
+
+IMPORTANTE sobre autenticación de sesión:
+- Si el documento menciona que primero debes autenticarte para obtener un token/sesión, usa authType: "session"
+- Extrae el endpoint de autenticación, método HTTP, y estructura del payload
+- Identifica dónde viene el token en la respuesta (ej: "accessSession", "token", "access_token")
+- Identifica el nombre del header donde se debe enviar el token (ej: "X-Auth-Token", "Authorization")
+- Usa placeholders {username} y {password} en el authPayload
 
 IMPORTANTE: Devuelve SOLO el JSON, sin explicaciones adicionales.`;
 

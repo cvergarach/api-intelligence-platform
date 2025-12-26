@@ -260,7 +260,13 @@ async function analyzeDocumentAsync(documentId, content, modelKey) {
           name: apiData.name,
           baseUrl: apiData.baseUrl,
           description: apiData.description,
-          authType: apiData.authType || 'custom'
+          authType: apiData.authType || 'custom',
+          // Session auth fields (optional)
+          authEndpoint: apiData.authEndpoint || null,
+          authMethod: apiData.authMethod || null,
+          authPayload: apiData.authPayload || null,
+          tokenPath: apiData.tokenPath || null,
+          tokenHeaderName: apiData.tokenHeaderName || null
         }
       });
       console.log(`✅ [ASYNC-ANALYSIS] API guardada con ID: ${api.id}`);
