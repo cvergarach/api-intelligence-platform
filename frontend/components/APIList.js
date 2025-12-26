@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Zap, Play, Key, Loader2, ChevronDown, ChevronUp, CheckCircle } from 'lucide-react';
+import { Zap, Play, Key, Loader2, ChevronDown, ChevronUp, CheckCircle, Trash2 } from 'lucide-react';
 import ExecutionModal from './ExecutionModal';
+import ConfirmDialog from './ConfirmDialog';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -14,6 +15,7 @@ export default function APIList({ refreshTrigger }) {
   const [selectedEndpoint, setSelectedEndpoint] = useState(null);
   const [selectedApi, setSelectedApi] = useState(null);
   const [showExecutionModal, setShowExecutionModal] = useState(false);
+  const [deleteDialog, setDeleteDialog] = useState({ isOpen: false, type: null, item: null });
 
   useEffect(() => {
     fetchAPIs();
@@ -39,6 +41,51 @@ export default function APIList({ refreshTrigger }) {
   const handleExecutionComplete = (execution) => {
     console.log('Execution completed:', execution);
     // Podrías mostrar una notificación de éxito aquí
+  };
+
+  const handleDeleteAPI = async (apiId) => {
+    try {
+      await axios.delete(`${API_URL}/api/apis/${apiId}`);
+      setApis(apis.filter(api => api.id !== apiId));
+    } catch (error) {
+      console.error('Error deleting API:', error);
+      alert('Error al eliminar la API: ' + (error.response?.data?.error || error.message));
+    }
+  };
+
+  const handleDeleteEndpoint = async (apiId, endpointId) => {
+    try {
+      await axios.delete(`${API_URL}/api/apis/endpoints/${endpointId}`);
+      // Update local state
+      setApis(apis.map(api => {
+        if (api.id === apiId) {
+          return {
+            ...api,
+            endpoints: api.endpoints.filter(ep => ep.id !== endpointId)
+          };
+        }
+        return api;
+      }));
+    } catch (error) {
+      console.error('Error deleting endpoint:', error);
+      alert('Error al eliminar el endpoint: ' + (error.response?.data?.error || error.message));
+    }
+  };
+
+  const openDeleteDialog = (type, item) => {
+    setDeleteDialog({ isOpen: true, type, item });
+  };
+
+  const closeDeleteDialog = () => {
+    setDeleteDialog({ isOpen: false, type: null, item: null });
+  };
+
+  const confirmDelete = () => {
+    if (deleteDialog.type === 'api') {
+      handleDeleteAPI(deleteDialog.item.id);
+    } else if (deleteDialog.type === 'endpoint') {
+      handleDeleteEndpoint(deleteDialog.item.apiId, deleteDialog.item.id);
+    }
   };
 
   if (loading) return <div className="text-center py-12"><Loader2 className="w-8 h-8 animate-spin mx-auto" /></div>;
@@ -70,12 +117,24 @@ export default function APIList({ refreshTrigger }) {
                   )}
                 </div>
               </div>
-              <button
-                onClick={() => setExpandedApi(expandedApi === api.id ? null : api.id)}
-                className="btn-secondary"
-              >
-                {expandedApi === api.id ? <ChevronUp /> : <ChevronDown />}
-              </button>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openDeleteDialog('api', api);
+                  }}
+                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  title="Eliminar API"
+                >
+                  <Trash2 className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={() => setExpandedApi(expandedApi === api.id ? null : api.id)}
+                  className="btn-secondary"
+                >
+                  {expandedApi === api.id ? <ChevronUp /> : <ChevronDown />}
+                </button>
+              </div>
             </div>
 
             {expandedApi === api.id && (
@@ -87,9 +146,9 @@ export default function APIList({ refreshTrigger }) {
                       <div className="flex-1">
                         <div className="flex items-center space-x-2">
                           <span className={`inline-block px-2 py-1 rounded text-xs font-semibold ${endpoint.method === 'GET' ? 'bg-green-200 text-green-800' :
-                              endpoint.method === 'POST' ? 'bg-blue-200 text-blue-800' :
-                                endpoint.method === 'PUT' ? 'bg-yellow-200 text-yellow-800' :
-                                  'bg-red-200 text-red-800'
+                            endpoint.method === 'POST' ? 'bg-blue-200 text-blue-800' :
+                              endpoint.method === 'PUT' ? 'bg-yellow-200 text-yellow-800' :
+                                'bg-red-200 text-red-800'
                             }`}>
                             {endpoint.method}
                           </span>
@@ -113,13 +172,25 @@ export default function APIList({ refreshTrigger }) {
                           </div>
                         )}
                       </div>
-                      <button
-                        onClick={() => handleExecuteClick(endpoint, api)}
-                        className="btn-primary flex items-center space-x-2 ml-4"
-                      >
-                        <Play className="w-4 h-4" />
-                        <span>Ejecutar</span>
-                      </button>
+                      <div className="flex items-center space-x-2 ml-4">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openDeleteDialog('endpoint', { ...endpoint, apiId: api.id });
+                          }}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Eliminar endpoint"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleExecuteClick(endpoint, api)}
+                          className="btn-primary flex items-center space-x-2"
+                        >
+                          <Play className="w-4 h-4" />
+                          <span>Ejecutar</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -141,6 +212,20 @@ export default function APIList({ refreshTrigger }) {
           onExecute={handleExecutionComplete}
         />
       )}
+
+      <ConfirmDialog
+        isOpen={deleteDialog.isOpen}
+        onClose={closeDeleteDialog}
+        onConfirm={confirmDelete}
+        title={deleteDialog.type === 'api' ? 'Eliminar API' : 'Eliminar Endpoint'}
+        message={
+          deleteDialog.type === 'api'
+            ? `¿Estás seguro de que deseas eliminar la API "${deleteDialog.item?.name}"? Esto también eliminará todos sus endpoints y credenciales asociadas.`
+            : `¿Estás seguro de que deseas eliminar el endpoint "${deleteDialog.item?.method} ${deleteDialog.item?.path}"?`
+        }
+        confirmText="Eliminar"
+        type="danger"
+      />
     </>
   );
 }

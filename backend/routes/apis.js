@@ -312,4 +312,29 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// 10. ELIMINAR ENDPOINT
+router.delete('/endpoints/:endpointId', async (req, res) => {
+  try {
+    const endpoint = await prisma.endpoint.findUnique({
+      where: { id: req.params.endpointId }
+    });
+
+    if (!endpoint) {
+      return res.status(404).json({ error: 'Endpoint no encontrado' });
+    }
+
+    await prisma.endpoint.delete({
+      where: { id: req.params.endpointId }
+    });
+
+    res.json({
+      success: true,
+      message: 'Endpoint eliminado'
+    });
+  } catch (error) {
+    console.error('Error eliminando endpoint:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;

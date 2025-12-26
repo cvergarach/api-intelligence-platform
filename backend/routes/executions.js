@@ -600,4 +600,29 @@ function replaceTemplateVars(template, vars) {
   return JSON.parse(replaced);
 }
 
+// 3. ELIMINAR EJECUCIÓN
+router.delete('/:id', async (req, res) => {
+  try {
+    const execution = await prisma.apiExecution.findUnique({
+      where: { id: req.params.id }
+    });
+
+    if (!execution) {
+      return res.status(404).json({ error: 'Ejecución no encontrada' });
+    }
+
+    await prisma.apiExecution.delete({
+      where: { id: req.params.id }
+    });
+
+    res.json({
+      success: true,
+      message: 'Ejecución eliminada'
+    });
+  } catch (error) {
+    console.error('Error eliminando ejecución:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;
