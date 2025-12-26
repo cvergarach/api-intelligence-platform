@@ -77,15 +77,28 @@ export const AI_MODELS = {
 
 class AIService {
   constructor() {
+    console.log('🤖 [AI-SERVICE] Inicializando servicio de IA...');
     this.gemini = process.env.GEMINI_API_KEY ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY) : null;
+    console.log(`🤖 [AI-SERVICE] Gemini: ${this.gemini ? '✅ Configurado' : '❌ No configurado'}`);
+
     this.claude = process.env.CLAUDE_API_KEY ? new Anthropic({ apiKey: process.env.CLAUDE_API_KEY }) : null;
+    console.log(`🤖 [AI-SERVICE] Claude: ${this.claude ? '✅ Configurado' : '❌ No configurado'}`);
+
     this.openai = process.env.OPENAI_API_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
+    console.log(`🤖 [AI-SERVICE] OpenAI: ${this.openai ? '✅ Configurado' : '❌ No configurado'}`);
   }
 
   // Analizar documento con IA
   async analyzeDocument(content, modelKey = 'gemini-3-flash-preview') {
+    console.log(`\n📊 [AI-ANALYZE] ========================================`);
+    console.log(`📊 [AI-ANALYZE] Iniciando análisis de documento`);
+    console.log(`📊 [AI-ANALYZE] Modelo: ${modelKey}`);
+    console.log(`📊 [AI-ANALYZE] Longitud contenido: ${content.length} caracteres`);
+
     const model = this.getModelInfo(modelKey);
-    
+    console.log(`📊 [AI-ANALYZE] Proveedor: ${model.provider}`);
+    console.log(`📊 [AI-ANALYZE] Nombre modelo: ${model.name}`);
+
     const prompt = `Analiza este documento y extrae TODAS las APIs, endpoints y credenciales mencionadas.
 
 DOCUMENTO:
@@ -117,11 +130,33 @@ Responde en formato JSON con esta estructura EXACTA:
 
 IMPORTANTE: Devuelve SOLO el JSON, sin explicaciones adicionales.`;
 
+    console.log(`📊 [AI-ANALYZE] Longitud prompt: ${prompt.length} caracteres`);
+
     try {
+      console.log(`📊 [AI-ANALYZE] Llamando a IA...`);
+      const startTime = Date.now();
+
       const response = await this.callAI(modelKey, prompt);
-      return this.parseJSONResponse(response);
+
+      const duration = Date.now() - startTime;
+      console.log(`✅ [AI-ANALYZE] Respuesta recibida en ${duration}ms`);
+      console.log(`📊 [AI-ANALYZE] Longitud respuesta: ${response.length} caracteres`);
+      console.log(`📊 [AI-ANALYZE] Primeros 500 caracteres:`, response.substring(0, 500));
+
+      console.log(`📊 [AI-ANALYZE] Parseando respuesta JSON...`);
+      const parsed = this.parseJSONResponse(response);
+      console.log(`✅ [AI-ANALYZE] JSON parseado exitosamente`);
+      console.log(`📊 [AI-ANALYZE] Resultado:`, JSON.stringify(parsed, null, 2));
+      console.log(`📊 [AI-ANALYZE] ========================================\n`);
+
+      return parsed;
     } catch (error) {
-      console.error('Error analizando documento:', error);
+      console.error(`\n❌ [AI-ANALYZE] ========================================`);
+      console.error(`❌ [AI-ANALYZE] Error analizando documento`);
+      console.error(`❌ [AI-ANALYZE] Modelo: ${modelKey}`);
+      console.error(`❌ [AI-ANALYZE] Error:`, error);
+      console.error(`❌ [AI-ANALYZE] Stack:`, error.stack);
+      console.error(`❌ [AI-ANALYZE] ========================================\n`);
       throw error;
     }
   }
@@ -241,7 +276,7 @@ IMPORTANTE: Lenguaje SIMPLE y ACCIONABLE para ejecutivos.`;
   // Llamada genérica a IA
   async callAI(modelKey, prompt) {
     const model = this.getModelInfo(modelKey);
-    
+
     switch (model.provider) {
       case 'gemini':
         return await this.callGemini(modelKey, prompt);
@@ -255,34 +290,53 @@ IMPORTANTE: Lenguaje SIMPLE y ACCIONABLE para ejecutivos.`;
   }
 
   async callGemini(modelKey, prompt) {
-    if (!this.gemini) throw new Error('API Key de Gemini no configurada');
-    
-    const model = this.gemini.getGenerativeModel({ model: modelKey });
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    return response.text();
+    console.log(`🤖 [GEMINI] Llamando a Gemini con modelo: ${modelKey}`);
+    if (!this.gemini) {
+      console.error('❌ [GEMINI] API Key no configurada');
+      throw new Error('API Key de Gemini no configurada');
+    }
+
+    try {
+      console.log(`🤖 [GEMINI] Obteniendo modelo generativo...`);
+      const model = this.gemini.getGenerativeModel({ model: modelKey });
+
+      console.log(`🤖 [GEMINI] Generando contenido...`);
+      const result = await model.generateContent(prompt);
+
+      console.log(`🤖 [GEMINI] Obteniendo respuesta...`);
+      const response = await result.response;
+
+      const text = response.text();
+      console.log(`✅ [GEMINI] Respuesta recibida: ${text.length} caracteres`);
+
+      return text;
+    } catch (error) {
+      console.error('❌ [GEMINI] Error:', error);
+      console.error('❌ [GEMINI] Stack:', error.stack);
+      throw error;
+    }
   }
 
   async callClaude(modelKey, prompt) {
     if (!this.claude) throw new Error('API Key de Claude no configurada');
-    
+
     const message = await this.claude.messages.create({
       model: modelKey,
       max_tokens: 4096,
       messages: [{ role: 'user', content: prompt }],
     });
-    
+
     return message.content[0].text;
   }
 
   async callOpenAI(modelKey, prompt) {
     if (!this.openai) throw new Error('API Key de OpenAI no configurada');
-    
+
     const completion = await this.openai.chat.completions.create({
       model: modelKey,
       messages: [{ role: 'user', content: prompt }],
     });
-    
+
     return completion.choices[0].message.content;
   }
 
@@ -298,17 +352,29 @@ IMPORTANTE: Lenguaje SIMPLE y ACCIONABLE para ejecutivos.`;
 
   // Parsear respuesta JSON de IA
   parseJSONResponse(response) {
+    console.log(`📝 [PARSE-JSON] Iniciando parseo de respuesta`);
+    console.log(`📝 [PARSE-JSON] Longitud respuesta: ${response.length} caracteres`);
+
     try {
       // Limpiar markdown code blocks si existen
       let cleaned = response.trim();
+      console.log(`📝 [PARSE-JSON] Limpiando markdown code blocks...`);
+
       cleaned = cleaned.replace(/```json\n?/g, '');
       cleaned = cleaned.replace(/```\n?/g, '');
       cleaned = cleaned.trim();
-      
-      return JSON.parse(cleaned);
+
+      console.log(`📝 [PARSE-JSON] Texto limpio (primeros 300 chars):`, cleaned.substring(0, 300));
+      console.log(`📝 [PARSE-JSON] Parseando JSON...`);
+
+      const parsed = JSON.parse(cleaned);
+      console.log(`✅ [PARSE-JSON] JSON parseado exitosamente`);
+
+      return parsed;
     } catch (error) {
-      console.error('Error parseando JSON:', error);
-      console.error('Respuesta recibida:', response);
+      console.error('❌ [PARSE-JSON] Error parseando JSON:', error);
+      console.error('❌ [PARSE-JSON] Respuesta completa:', response);
+      console.error('❌ [PARSE-JSON] Stack:', error.stack);
       throw new Error('La IA no devolvió un JSON válido');
     }
   }
@@ -316,7 +382,7 @@ IMPORTANTE: Lenguaje SIMPLE y ACCIONABLE para ejecutivos.`;
   // Obtener todos los modelos disponibles
   getAvailableModels() {
     const models = [];
-    
+
     for (const provider in AI_MODELS) {
       for (const modelKey in AI_MODELS[provider]) {
         models.push({
@@ -325,7 +391,7 @@ IMPORTANTE: Lenguaje SIMPLE y ACCIONABLE para ejecutivos.`;
         });
       }
     }
-    
+
     return models;
   }
 }

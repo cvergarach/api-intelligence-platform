@@ -9,30 +9,36 @@ import aiService from '../services/aiService.js';
 const router = express.Router();
 
 // Configurar multer para subida de archivos
+console.log('📁 [MULTER] Configurando almacenamiento de archivos');
 const storage = multer.diskStorage({
   destination: async (req, file, cb) => {
     const uploadDir = process.env.UPLOAD_DIR || './uploads';
+    console.log(`📁 [MULTER] Directorio de subida: ${uploadDir}`);
     try {
       await fs.mkdir(uploadDir, { recursive: true });
+      console.log(`✅ [MULTER] Directorio creado/verificado: ${uploadDir}`);
       cb(null, uploadDir);
     } catch (error) {
+      console.error(`❌ [MULTER] Error creando directorio: ${error.message}`);
       cb(error, null);
     }
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+    const filename = file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname);
+    console.log(`📁 [MULTER] Nombre de archivo generado: ${filename}`);
+    cb(null, filename);
   }
 });
 
-const upload = multer({ 
+const upload = multer({
   storage,
   limits: { fileSize: parseInt(process.env.MAX_FILE_SIZE) || 50000000 },
   fileFilter: (req, file, cb) => {
     const allowedTypes = /pdf/;
     const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
     const mimetype = file.mimetype === 'application/pdf';
-    
+
     if (mimetype && extname) {
       return cb(null, true);
     }
@@ -42,18 +48,28 @@ const upload = multer({
 
 // 1. SUBIR Y PROCESAR PDF
 router.post('/upload-pdf', upload.single('file'), async (req, res) => {
+  console.log('\n📤 [UPLOAD-PDF] Iniciando subida de PDF');
   try {
+    console.log('📤 [UPLOAD-PDF] Verificando archivo...');
     if (!req.file) {
+      console.error('❌ [UPLOAD-PDF] No se proporcionó archivo');
       return res.status(400).json({ error: 'No se proporcionó ningún archivo' });
     }
 
+    console.log(`📤 [UPLOAD-PDF] Archivo recibido: ${req.file.originalname}`);
+    console.log(`📤 [UPLOAD-PDF] Tamaño: ${req.file.size} bytes`);
+    console.log(`📤 [UPLOAD-PDF] Ruta: ${req.file.path}`);
+
     const { modelKey = 'gemini-3-flash-preview' } = req.body;
+    console.log(`📤 [UPLOAD-PDF] Modelo seleccionado: ${modelKey}`);
 
     // Procesar PDF
-    console.log('Procesando PDF:', req.file.filename);
+    console.log('📄 [UPLOAD-PDF] Procesando contenido del PDF...');
     const pdfData = await documentService.processPDF(req.file.path);
+    console.log(`✅ [UPLOAD-PDF] PDF procesado: ${pdfData.pages} páginas, ${pdfData.text.length} caracteres`);
 
     // Guardar documento en BD
+    console.log('💾 [UPLOAD-PDF] Guardando documento en base de datos...');
     const document = await prisma.document.create({
       data: {
         name: req.file.originalname,
@@ -62,10 +78,13 @@ router.post('/upload-pdf', upload.single('file'), async (req, res) => {
         content: pdfData.text
       }
     });
+    console.log(`✅ [UPLOAD-PDF] Documento guardado con ID: ${document.id}`);
 
     // Analizar con IA en segundo plano
+    console.log('🤖 [UPLOAD-PDF] Iniciando análisis de IA en segundo plano...');
     analyzeDocumentAsync(document.id, pdfData.text, modelKey);
 
+    console.log('✅ [UPLOAD-PDF] Respuesta enviada al cliente');
     res.json({
       success: true,
       message: 'PDF subido y en proceso de análisis',
@@ -77,7 +96,8 @@ router.post('/upload-pdf', upload.single('file'), async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error subiendo PDF:', error);
+    console.error('❌ [UPLOAD-PDF] Error:', error);
+    console.error('❌ [UPLOAD-PDF] Stack:', error.stack);
     res.status(500).json({ error: error.message });
   }
 });
@@ -204,18 +224,36 @@ router.delete('/:id', async (req, res) => {
 
 // Función auxiliar para analizar documento de forma asíncrona
 async function analyzeDocumentAsync(documentId, content, modelKey) {
+  console.log(`\n🤖 [ASYNC-ANALYSIS] ========================================`);
+  console.log(`🤖 [ASYNC-ANALYSIS] Documento ID: ${documentId}`);
+  console.log(`🤖 [ASYNC-ANALYSIS] Modelo: ${modelKey}`);
+  console.log(`🤖 [ASYNC-ANALYSIS] Longitud contenido: ${content.length} caracteres`);
+  console.log(`🤖 [ASYNC-ANALYSIS] ========================================`);
+
   try {
-    console.log(`Iniciando análisis de documento ${documentId} con modelo ${modelKey}`);
-    
+    console.log(`🤖 [ASYNC-ANALYSIS] Llamando a aiService.analyzeDocument...`);
+    const startTime = Date.now();
+
     const analysis = await aiService.analyzeDocument(content, modelKey);
-    
+
+    const duration = Date.now() - startTime;
+    console.log(`✅ [ASYNC-ANALYSIS] Análisis completado en ${duration}ms`);
+    console.log(`📊 [ASYNC-ANALYSIS] Resultado:`, JSON.stringify(analysis, null, 2));
+
     if (!analysis.apis || analysis.apis.length === 0) {
-      console.log('No se encontraron APIs en el documento');
+      console.log('⚠️  [ASYNC-ANALYSIS] No se encontraron APIs en el documento');
       return;
     }
 
+    console.log(`📊 [ASYNC-ANALYSIS] ${analysis.apis.length} APIs encontradas`);
+
     // Guardar APIs y endpoints encontrados
-    for (const apiData of analysis.apis) {
+    for (let i = 0; i < analysis.apis.length; i++) {
+      const apiData = analysis.apis[i];
+      console.log(`\n💾 [ASYNC-ANALYSIS] Guardando API ${i + 1}/${analysis.apis.length}: ${apiData.name}`);
+      console.log(`💾 [ASYNC-ANALYSIS] Base URL: ${apiData.baseUrl}`);
+      console.log(`💾 [ASYNC-ANALYSIS] Auth Type: ${apiData.authType || 'custom'}`);
+
       const api = await prisma.api.create({
         data: {
           documentId,
@@ -225,10 +263,15 @@ async function analyzeDocumentAsync(documentId, content, modelKey) {
           authType: apiData.authType || 'custom'
         }
       });
+      console.log(`✅ [ASYNC-ANALYSIS] API guardada con ID: ${api.id}`);
 
       // Guardar endpoints
       if (apiData.endpoints && apiData.endpoints.length > 0) {
-        for (const endpointData of apiData.endpoints) {
+        console.log(`📍 [ASYNC-ANALYSIS] Guardando ${apiData.endpoints.length} endpoints...`);
+        for (let j = 0; j < apiData.endpoints.length; j++) {
+          const endpointData = apiData.endpoints[j];
+          console.log(`📍 [ASYNC-ANALYSIS] Endpoint ${j + 1}: ${endpointData.method} ${endpointData.path}`);
+
           await prisma.endpoint.create({
             data: {
               apiId: api.id,
@@ -240,12 +283,23 @@ async function analyzeDocumentAsync(documentId, content, modelKey) {
             }
           });
         }
+        console.log(`✅ [ASYNC-ANALYSIS] ${apiData.endpoints.length} endpoints guardados`);
+      } else {
+        console.log(`⚠️  [ASYNC-ANALYSIS] No se encontraron endpoints para esta API`);
       }
     }
 
-    console.log(`✅ Análisis completado: ${analysis.apis.length} APIs encontradas`);
+    console.log(`\n🎉 [ASYNC-ANALYSIS] ========================================`);
+    console.log(`🎉 [ASYNC-ANALYSIS] Análisis completado exitosamente`);
+    console.log(`🎉 [ASYNC-ANALYSIS] Total APIs: ${analysis.apis.length}`);
+    console.log(`🎉 [ASYNC-ANALYSIS] ========================================\n`);
   } catch (error) {
-    console.error('Error en análisis asíncrono:', error);
+    console.error(`\n❌ [ASYNC-ANALYSIS] ========================================`);
+    console.error(`❌ [ASYNC-ANALYSIS] Error en análisis asíncrono`);
+    console.error(`❌ [ASYNC-ANALYSIS] Documento ID: ${documentId}`);
+    console.error(`❌ [ASYNC-ANALYSIS] Error:`, error);
+    console.error(`❌ [ASYNC-ANALYSIS] Stack:`, error.stack);
+    console.error(`❌ [ASYNC-ANALYSIS] ========================================\n`);
   }
 }
 
