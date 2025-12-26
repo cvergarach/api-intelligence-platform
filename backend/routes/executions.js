@@ -43,8 +43,10 @@ router.post('/execute/:endpointId', async (req, res) => {
     console.log(`📊 [EXECUTE] Auth Type: ${endpoint.api.authType}`);
     console.log(`📊 [EXECUTE] Credenciales activas: ${endpoint.api.credentials.length}`);
 
-    // Construir URL completa
-    const fullUrl = `${endpoint.api.baseUrl}${endpoint.path}`;
+    // Construir URL completa (eliminar doble barra si existe)
+    const baseUrl = endpoint.api.baseUrl.replace(/\/+$/, ''); // Eliminar barras finales
+    const path = endpoint.path.replace(/^\/+/, '/'); // Asegurar una sola barra inicial
+    const fullUrl = `${baseUrl}${path}`;
     console.log(`🎯 [EXECUTE] URL completa: ${fullUrl}`);
 
     // Preparar headers con autenticación
