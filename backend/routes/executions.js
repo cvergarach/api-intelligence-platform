@@ -43,15 +43,16 @@ router.post('/execute/:endpointId', async (req, res) => {
     console.log(`📊 [EXECUTE] Auth Type: ${endpoint.api.authType}`);
     console.log(`📊 [EXECUTE] Credenciales activas: ${endpoint.api.credentials.length}`);
 
-    // Construir URL completa (eliminar doble barra si existe)
-    const baseUrl = endpoint.api.baseUrl.replace(/\/+$/, ''); // Eliminar barras finales
+    // Construir URL completa (eliminar doble barra si existe y forzar HTTPS)
+    let baseUrl = endpoint.api.baseUrl.replace(/\/+$/, ''); // Eliminar barras finales
+    baseUrl = baseUrl.replace(/^http:/, 'https:'); // Forzar HTTPS
     const path = endpoint.path.replace(/^\/+/, '/'); // Asegurar una sola barra inicial
     const fullUrl = `${baseUrl}${path}`;
     console.log(`🎯 [EXECUTE] URL completa: ${fullUrl}`);
 
-    // Preparar headers con autenticación
+    // Preparar headers con autenticación (sin apikey, solo bearer/basic)
     console.log(`🔑 [EXECUTE] Construyendo headers...`);
-    const headers = await buildHeaders(endpoint.api);
+    const headers = await buildHeaders(endpoint.api, endpoint.method);
     console.log(`🔑 [EXECUTE] Headers:`, headers);
 
     // Ejecutar la llamada a la API
@@ -315,17 +316,22 @@ router.post('/execute-all/:apiId', async (req, res) => {
 
 // FUNCIONES AUXILIARES
 
-async function buildHeaders(api) {
+async function buildHeaders(api, method = 'GET') {
   const headers = {
-    'Content-Type': 'application/json',
     'User-Agent': 'APIIntelligencePlatform/1.0'
   };
+
+  // Solo agregar Content-Type para métodos que envían body
+  if (['POST', 'PUT', 'PATCH'].includes(method)) {
+    headers['Content-Type'] = 'application/json';
+  }
 
   if (api.credentials && api.credentials.length > 0) {
     for (const credential of api.credentials) {
       switch (credential.type) {
         case 'apikey':
-          headers[credential.key] = await decryptValue(credential.value);
+          // NO agregar apikey a headers - va en query params
+          console.log(`🔑 [BUILD-HEADERS] Saltando apikey '${credential.key}' (va en query params)`);
           break;
         case 'bearer':
           headers['Authorization'] = `Bearer ${await decryptValue(credential.value)}`;
@@ -335,6 +341,7 @@ async function buildHeaders(api) {
           headers['Authorization'] = `Basic ${Buffer.from(basicValue).toString('base64')}`;
           break;
         default:
+          // Para otros tipos, agregar al header
           headers[credential.key] = await decryptValue(credential.value);
       }
     }
