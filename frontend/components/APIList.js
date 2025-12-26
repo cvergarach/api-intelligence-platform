@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Zap, Play, Key, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Zap, Play, Key, Loader2, ChevronDown, ChevronUp, CheckCircle } from 'lucide-react';
+import ExecutionModal from './ExecutionModal';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -10,7 +11,9 @@ export default function APIList({ refreshTrigger }) {
   const [apis, setApis] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedApi, setExpandedApi] = useState(null);
-  const [executing, setExecuting] = useState(null);
+  const [selectedEndpoint, setSelectedEndpoint] = useState(null);
+  const [selectedApi, setSelectedApi] = useState(null);
+  const [showExecutionModal, setShowExecutionModal] = useState(false);
 
   useEffect(() => {
     fetchAPIs();
@@ -27,87 +30,117 @@ export default function APIList({ refreshTrigger }) {
     }
   };
 
-  const executeEndpoint = async (endpointId) => {
-    setExecuting(endpointId);
-    try {
-      await axios.post(`${API_URL}/api/executions/execute/${endpointId}`, {
-        parameters: {},
-        modelKey: 'gemini-3-flash-preview'
-      });
-      alert('Endpoint ejecutado! Ve a Dashboard para ver resultados');
-    } catch (error) {
-      alert('Error: ' + (error.response?.data?.error || 'Error ejecutando'));
-    } finally {
-      setExecuting(null);
-    }
+  const handleExecuteClick = (endpoint, api) => {
+    setSelectedEndpoint(endpoint);
+    setSelectedApi(api);
+    setShowExecutionModal(true);
+  };
+
+  const handleExecutionComplete = (execution) => {
+    console.log('Execution completed:', execution);
+    // Podrías mostrar una notificación de éxito aquí
   };
 
   if (loading) return <div className="text-center py-12"><Loader2 className="w-8 h-8 animate-spin mx-auto" /></div>;
   if (apis.length === 0) return <div className="card text-center">No hay APIs descubiertas aún. Sube un documento primero.</div>;
 
   return (
-    <div className="space-y-4">
-      <h2 className="text-2xl font-bold">Paso 2: APIs Descubiertas ({apis.length})</h2>
-      
-      {apis.map((api) => (
-        <div key={api.id} className="card">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <h3 className="text-xl font-semibold flex items-center space-x-2">
-                <Zap className="w-5 h-5 text-primary-600" />
-                <span>{api.name}</span>
-              </h3>
-              <p className="text-sm text-gray-600 mt-1">{api.baseUrl}</p>
-              <p className="text-sm text-gray-500 mt-1">{api.description || 'Sin descripción'}</p>
-              <div className="flex items-center space-x-4 mt-2 text-sm">
-                <span className="text-gray-600">Autenticación: <strong>{api.authType}</strong></span>
-                <span className="text-gray-600">Endpoints: <strong>{api.endpoints?.length || 0}</strong></span>
-              </div>
-            </div>
-            <button
-              onClick={() => setExpandedApi(expandedApi === api.id ? null : api.id)}
-              className="btn-secondary"
-            >
-              {expandedApi === api.id ? <ChevronUp /> : <ChevronDown />}
-            </button>
-          </div>
+    <>
+      <div className="space-y-4">
+        <h2 className="text-2xl font-bold">Paso 2: APIs Descubiertas ({apis.length})</h2>
 
-          {expandedApi === api.id && (
-            <div className="mt-4 space-y-3 border-t pt-4">
-              <h4 className="font-semibold">Endpoints disponibles:</h4>
-              {api.endpoints?.map((endpoint) => (
-                <div key={endpoint.id} className="bg-gray-50 p-3 rounded-lg flex items-center justify-between">
-                  <div>
-                    <span className={`inline-block px-2 py-1 rounded text-xs font-semibold ${
-                      endpoint.method === 'GET' ? 'bg-green-200' :
-                      endpoint.method === 'POST' ? 'bg-blue-200' :
-                      endpoint.method === 'PUT' ? 'bg-yellow-200' : 'bg-red-200'
-                    }`}>
-                      {endpoint.method}
+        {apis.map((api) => (
+          <div key={api.id} className="card">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <h3 className="text-xl font-semibold flex items-center space-x-2">
+                  <Zap className="w-5 h-5 text-primary-600" />
+                  <span>{api.name}</span>
+                </h3>
+                <p className="text-sm text-gray-600 mt-1">{api.baseUrl}</p>
+                <p className="text-sm text-gray-500 mt-1">{api.description || 'Sin descripción'}</p>
+                <div className="flex items-center space-x-4 mt-2 text-sm">
+                  <span className="text-gray-600">Autenticación: <strong>{api.authType}</strong></span>
+                  <span className="text-gray-600">Endpoints: <strong>{api.endpoints?.length || 0}</strong></span>
+                  {api.credentials?.length > 0 && (
+                    <span className="flex items-center space-x-1 text-green-600">
+                      <CheckCircle className="w-4 h-4" />
+                      <span>Credenciales configuradas</span>
                     </span>
-                    <span className="ml-2 font-mono text-sm">{endpoint.path}</span>
-                    {endpoint.description && (
-                      <p className="text-xs text-gray-600 mt-1">{endpoint.description}</p>
-                    )}
-                  </div>
-                  <button
-                    onClick={() => executeEndpoint(endpoint.id)}
-                    disabled={executing === endpoint.id}
-                    className="btn-primary flex items-center space-x-1"
-                  >
-                    {executing === endpoint.id ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Play className="w-4 h-4" />
-                    )}
-                    <span>Ejecutar</span>
-                  </button>
+                  )}
                 </div>
-              ))}
+              </div>
+              <button
+                onClick={() => setExpandedApi(expandedApi === api.id ? null : api.id)}
+                className="btn-secondary"
+              >
+                {expandedApi === api.id ? <ChevronUp /> : <ChevronDown />}
+              </button>
             </div>
-          )}
-        </div>
-      ))}
-    </div>
+
+            {expandedApi === api.id && (
+              <div className="mt-4 space-y-3 border-t pt-4">
+                <h4 className="font-semibold">Endpoints disponibles:</h4>
+                {api.endpoints?.map((endpoint) => (
+                  <div key={endpoint.id} className="bg-gray-50 p-4 rounded-lg">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2">
+                          <span className={`inline-block px-2 py-1 rounded text-xs font-semibold ${endpoint.method === 'GET' ? 'bg-green-200 text-green-800' :
+                              endpoint.method === 'POST' ? 'bg-blue-200 text-blue-800' :
+                                endpoint.method === 'PUT' ? 'bg-yellow-200 text-yellow-800' :
+                                  'bg-red-200 text-red-800'
+                            }`}>
+                            {endpoint.method}
+                          </span>
+                          <span className="font-mono text-sm font-medium">{endpoint.path}</span>
+                        </div>
+                        {endpoint.description && (
+                          <p className="text-sm text-gray-600 mt-2">{endpoint.description}</p>
+                        )}
+                        {endpoint.parameters && (
+                          <div className="mt-2 text-xs text-gray-500">
+                            {endpoint.parameters.required?.length > 0 && (
+                              <p>
+                                <strong>Requeridos:</strong> {endpoint.parameters.required.join(', ')}
+                              </p>
+                            )}
+                            {endpoint.parameters.optional?.length > 0 && (
+                              <p>
+                                <strong>Opcionales:</strong> {endpoint.parameters.optional.join(', ')}
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => handleExecuteClick(endpoint, api)}
+                        className="btn-primary flex items-center space-x-2 ml-4"
+                      >
+                        <Play className="w-4 h-4" />
+                        <span>Ejecutar</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {showExecutionModal && selectedEndpoint && selectedApi && (
+        <ExecutionModal
+          endpoint={selectedEndpoint}
+          api={selectedApi}
+          onClose={() => {
+            setShowExecutionModal(false);
+            setSelectedEndpoint(null);
+            setSelectedApi(null);
+          }}
+          onExecute={handleExecutionComplete}
+        />
+      )}
+    </>
   );
 }

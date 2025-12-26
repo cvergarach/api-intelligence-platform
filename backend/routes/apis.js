@@ -46,16 +46,14 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// 3. AGREGAR CREDENCIAL A API
+// 3. AGREGAR CREDENCIAL(ES) A API
 router.post('/:id/credentials', async (req, res) => {
-  try {
-    const { type, key, value, metadata = {} } = req.body;
+  console.log(`\n🔑 [CREDENTIALS] ========================================`);
+  console.log(`🔑 [CREDENTIALS] API ID: ${req.params.id}`);
+  console.log(`🔑 [CREDENTIALS] Body:`, req.body);
 
-    if (!type || !key || !value) {
-      return res.status(400).json({ 
-        error: 'Se requieren type, key y value' 
-      });
-    }
+  try {
+    const { credentials } = req.body;
 
     // Validar que la API existe
     const api = await prisma.api.findUnique({
@@ -63,32 +61,112 @@ router.post('/:id/credentials', async (req, res) => {
     });
 
     if (!api) {
+      console.error(`❌ [CREDENTIALS] API no encontrada: ${req.params.id}`);
       return res.status(404).json({ error: 'API no encontrada' });
     }
 
-    // Encriptar el valor de la credencial
-    const hashedValue = await bcrypt.hash(value, 10);
+    console.log(`✅ [CREDENTIALS] API encontrada: ${api.name}`);
 
-    const credential = await prisma.credential.create({
-      data: {
-        apiId: req.params.id,
-        type,
-        key,
-        value: hashedValue,
-        metadata
+    // Manejar array de credenciales
+    if (Array.isArray(credentials)) {
+      console.log(`🔑 [CREDENTIALS] Guardando ${credentials.length} credenciales...`);
+
+      const createdCredentials = [];
+
+      for (const cred of credentials) {
+        const { type, key, value, metadata = {} } = cred;
+
+        if (!type || !key || !value) {
+          console.error(`❌ [CREDENTIALS] Credencial inválida:`, cred);
+          continue;
+        }
+
+        console.log(`🔑 [CREDENTIALS] Guardando: ${key}`);
+
+        // Desactivar credenciales anteriores con la misma key
+        await prisma.credential.updateMany({
+          where: {
+            apiId: req.params.id,
+            key: key
+          },
+          data: {
+            isActive: false
+          }
+        });
+
+        // Crear nueva credencial (guardar valor directamente, no hasheado)
+        const credential = await prisma.credential.create({
+          data: {
+            apiId: req.params.id,
+            type,
+            key,
+            value, // Guardar directamente para poder usarlo en requests
+            metadata
+          }
+        });
+
+        // No devolver el valor por seguridad
+        const { value: _, ...safeCredential } = credential;
+        createdCredentials.push(safeCredential);
       }
-    });
 
-    // No devolver el valor hasheado por seguridad
-    const { value: _, ...safeCredential } = credential;
+      console.log(`✅ [CREDENTIALS] ${createdCredentials.length} credenciales guardadas`);
+      console.log(`🔑 [CREDENTIALS] ========================================\n`);
 
-    res.json({
-      success: true,
-      message: 'Credencial agregada exitosamente',
-      credential: safeCredential
-    });
+      res.json({
+        success: true,
+        message: `${createdCredentials.length} credenciales agregadas exitosamente`,
+        credentials: createdCredentials
+      });
+    } else {
+      // Manejar credencial única (compatibilidad)
+      const { type, key, value, metadata = {} } = req.body;
+
+      if (!type || !key || !value) {
+        return res.status(400).json({
+          error: 'Se requieren type, key y value'
+        });
+      }
+
+      console.log(`🔑 [CREDENTIALS] Guardando credencial única: ${key}`);
+
+      // Desactivar credenciales anteriores con la misma key
+      await prisma.credential.updateMany({
+        where: {
+          apiId: req.params.id,
+          key: key
+        },
+        data: {
+          isActive: false
+        }
+      });
+
+      const credential = await prisma.credential.create({
+        data: {
+          apiId: req.params.id,
+          type,
+          key,
+          value, // Guardar directamente
+          metadata
+        }
+      });
+
+      // No devolver el valor hasheado por seguridad
+      const { value: _, ...safeCredential } = credential;
+
+      console.log(`✅ [CREDENTIALS] Credencial guardada`);
+      console.log(`🔑 [CREDENTIALS] ========================================\n`);
+
+      res.json({
+        success: true,
+        message: 'Credencial agregada exitosamente',
+        credential: safeCredential
+      });
+    }
   } catch (error) {
-    console.error('Error agregando credencial:', error);
+    console.error(`❌ [CREDENTIALS] Error:`, error);
+    console.error(`❌ [CREDENTIALS] Stack:`, error.stack);
+    console.error(`🔑 [CREDENTIALS] ========================================\n`);
     res.status(500).json({ error: error.message });
   }
 });
@@ -166,9 +244,9 @@ router.delete('/credentials/:credentialId', async (req, res) => {
       where: { id: req.params.credentialId }
     });
 
-    res.json({ 
-      success: true, 
-      message: 'Credencial eliminada' 
+    res.json({
+      success: true,
+      message: 'Credencial eliminada'
     });
   } catch (error) {
     console.error('Error eliminando credencial:', error);
@@ -195,7 +273,7 @@ router.get('/:id/endpoints', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const { name, baseUrl, description, authType } = req.body;
-    
+
     const api = await prisma.api.update({
       where: { id: req.params.id },
       data: {
@@ -224,9 +302,9 @@ router.delete('/:id', async (req, res) => {
       where: { id: req.params.id }
     });
 
-    res.json({ 
-      success: true, 
-      message: 'API eliminada' 
+    res.json({
+      success: true,
+      message: 'API eliminada'
     });
   } catch (error) {
     console.error('Error eliminando API:', error);
