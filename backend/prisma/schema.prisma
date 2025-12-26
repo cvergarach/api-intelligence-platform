@@ -1,0 +1,126 @@
+// Esquema de Base de Datos PostgreSQL
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Documentos cargados (PDFs o URLs)
+model Document {
+  id          String   @id @default(uuid())
+  name        String
+  type        String   // 'pdf' o 'web'
+  url         String?  // URL si es tipo web
+  filePath    String?  // Path del PDF si es tipo pdf
+  content     String   @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  apis        Api[]
+  executions  ApiExecution[]
+}
+
+// APIs descubiertas en los documentos
+model Api {
+  id              String   @id @default(uuid())
+  documentId      String
+  name            String
+  baseUrl         String
+  description     String?  @db.Text
+  authType        String   // 'apikey', 'oauth', 'bearer', 'basic', 'custom'
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  document        Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  endpoints       Endpoint[]
+  credentials     Credential[]
+}
+
+// Endpoints descubiertos de cada API
+model Endpoint {
+  id              String   @id @default(uuid())
+  apiId           String
+  path            String
+  method          String   // GET, POST, PUT, DELETE, etc.
+  description     String?  @db.Text
+  parameters      Json     // Parámetros requeridos y opcionales
+  responseSchema  Json?    // Esquema de respuesta esperado
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  api             Api      @relation(fields: [apiId], references: [id], onDelete: Cascade)
+  executions      ApiExecution[]
+}
+
+// Credenciales para ejecutar APIs
+model Credential {
+  id          String   @id @default(uuid())
+  apiId       String
+  type        String   // 'apikey', 'oauth', 'bearer', 'basic'
+  key         String   // Nombre de la credencial (ej: 'X-API-Key')
+  value       String   // Valor encriptado
+  metadata    Json?    // Información adicional (headers, scopes, etc)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  api         Api      @relation(fields: [apiId], references: [id], onDelete: Cascade)
+}
+
+// Ejecuciones de APIs
+model ApiExecution {
+  id            String   @id @default(uuid())
+  documentId    String
+  endpointId    String
+  parameters    Json     // Parámetros usados en la ejecución
+  response      Json?    // Respuesta de la API
+  statusCode    Int?
+  success       Boolean
+  errorMessage  String?  @db.Text
+  executedAt    DateTime @default(now())
+  
+  document      Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  endpoint      Endpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+  insights      Insight[]
+}
+
+// Insights generados por IA
+model Insight {
+  id              String   @id @default(uuid())
+  executionId     String
+  aiModel         String   // Modelo usado para generar el insight
+  title           String
+  description     String   @db.Text
+  category        String   // 'trend', 'anomaly', 'opportunity', 'risk'
+  confidence      Float    // 0-100
+  metadata        Json?
+  createdAt       DateTime @default(now())
+  
+  execution       ApiExecution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+}
+
+// Reportes generados
+model Report {
+  id          String   @id @default(uuid())
+  title       String
+  description String?  @db.Text
+  data        Json     // Datos del reporte
+  charts      Json?    // Configuración de gráficos
+  insights    Json?    // Insights incluidos
+  createdBy   String   // Modelo de IA usado
+  createdAt   DateTime @default(now())
+}
+
+// Configuración de modelos de IA
+model AiModelConfig {
+  id          String   @id @default(uuid())
+  provider    String   // 'gemini', 'claude', 'openai'
+  modelName   String
+  apiKey      String
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
