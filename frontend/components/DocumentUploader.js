@@ -71,7 +71,8 @@ export default function DocumentUploader({ projectId, onDocumentProcessed }) {
     try {
       await axios.post(`${API_URL}/api/documents/analyze-web`, {
         url: url.trim(),
-        modelKey: selectedModel
+        modelKey: selectedModel,
+        ...(projectId && { projectId })
       });
 
       setMessage({ type: 'success', text: '¡Sitio web analizado! Buscando APIs...' });

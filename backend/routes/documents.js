@@ -75,7 +75,8 @@ router.post('/upload-pdf', upload.single('file'), async (req, res) => {
         name: req.file.originalname,
         type: 'pdf',
         filePath: req.file.path,
-        content: pdfData.text
+        content: pdfData.text,
+        projectId: req.body.projectId || null
       }
     });
     console.log(`✅ [UPLOAD-PDF] Documento guardado con ID: ${document.id}`);
@@ -120,7 +121,8 @@ router.post('/analyze-web', async (req, res) => {
         name: webData.title,
         type: 'web',
         url: url,
-        content: webData.text
+        content: webData.text,
+        projectId: req.body.projectId || null
       }
     });
 
