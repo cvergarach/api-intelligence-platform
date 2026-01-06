@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Menu, X, Home, Database, Zap, BarChart3, Settings, FileText, Bell, Search, ChevronDown } from 'lucide-react';
+import { Menu, X, Home, Lightbulb, Settings, Bell, Search, ChevronDown, Zap } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -10,11 +10,8 @@ export default function DashboardLayout({ children }) {
     const pathname = usePathname();
 
     const navigation = [
-        { name: 'Dashboard', href: '/', icon: Home },
-        { name: 'Documentos', href: '/documents', icon: FileText },
-        { name: 'APIs', href: '/apis', icon: Database },
-        { name: 'Ejecuciones', href: '/executions', icon: Zap },
-        { name: 'Reportes', href: '/reports', icon: BarChart3 },
+        { name: 'Proyectos', href: '/', icon: Home },
+        { name: 'Todos los Insights', href: '/insights', icon: Lightbulb },
         { name: 'Configuración', href: '/settings', icon: Settings },
     ];
 
@@ -103,7 +100,7 @@ export default function DashboardLayout({ children }) {
                                 <Search className="w-4 h-4 text-gray-400" />
                                 <input
                                     type="text"
-                                    placeholder="Buscar APIs, documentos..."
+                                    placeholder="Buscar proyectos, APIs..."
                                     className="bg-transparent border-none outline-none text-sm w-full"
                                 />
                             </div>
@@ -120,11 +117,11 @@ export default function DashboardLayout({ children }) {
                             {/* User menu */}
                             <div className="flex items-center space-x-3 pl-4 border-l border-gray-200">
                                 <div className="hidden sm:block text-right">
-                                    <p className="text-sm font-semibold text-gray-900">John Carter</p>
+                                    <p className="text-sm font-semibold text-gray-900">Usuario</p>
                                     <p className="text-xs text-gray-500">Admin</p>
                                 </div>
                                 <div className="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center text-white font-semibold">
-                                    JC
+                                    U
                                 </div>
                                 <ChevronDown className="w-4 h-4 text-gray-400" />
                             </div>
