@@ -19,7 +19,7 @@ export default function DashboardLayout({ children }) {
     ];
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50">
+        <div className="min-h-screen bg-gray-50">
             {/* Mobile sidebar backdrop */}
             {sidebarOpen && (
                 <div
@@ -30,16 +30,16 @@ export default function DashboardLayout({ children }) {
 
             {/* Sidebar */}
             <aside
-                className={`fixed top-0 left-0 z-50 h-full w-64 bg-white shadow-2xl transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+                className={`fixed top-0 left-0 z-50 h-full w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'
                     }`}
             >
                 {/* Logo */}
-                <div className="h-16 flex items-center justify-between px-6 border-b border-gray-100">
+                <div className="h-16 flex items-center justify-between px-6 border-b border-gray-200">
                     <div className="flex items-center space-x-2">
-                        <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                        <div className="w-8 h-8 bg-slate-800 rounded-lg flex items-center justify-center">
                             <Zap className="w-5 h-5 text-white" />
                         </div>
-                        <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                        <span className="text-xl font-bold text-slate-800">
                             DATALIVE
                         </span>
                     </div>
@@ -60,8 +60,8 @@ export default function DashboardLayout({ children }) {
                             <Link
                                 key={item.name}
                                 href={item.href}
-                                className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 ${isActive
-                                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/30'
+                                className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 ${isActive
+                                    ? 'bg-slate-800 text-white'
                                     : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                                     }`}
                             >
@@ -74,10 +74,10 @@ export default function DashboardLayout({ children }) {
 
                 {/* Bottom CTA */}
                 <div className="absolute bottom-6 left-4 right-4">
-                    <div className="bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl p-4 text-white">
+                    <div className="bg-slate-800 rounded-xl p-4 text-white">
                         <p className="text-sm font-semibold mb-2">¿Necesitas ayuda?</p>
                         <p className="text-xs opacity-90 mb-3">Consulta nuestra documentación</p>
-                        <button className="w-full bg-white text-blue-600 py-2 rounded-lg text-sm font-medium hover:shadow-lg transition-shadow">
+                        <button className="w-full bg-white text-slate-800 py-2 rounded-lg text-sm font-medium hover:bg-gray-100 transition-colors">
                             Ver Docs
                         </button>
                     </div>
@@ -87,7 +87,7 @@ export default function DashboardLayout({ children }) {
             {/* Main content */}
             <div className="lg:ml-64">
                 {/* Top navigation */}
-                <header className="h-16 bg-white/80 backdrop-blur-lg border-b border-gray-100 sticky top-0 z-30">
+                <header className="h-16 bg-white border-b border-gray-200 sticky top-0 z-30">
                     <div className="h-full px-4 lg:px-8 flex items-center justify-between">
                         {/* Left side */}
                         <div className="flex items-center space-x-4">
@@ -99,7 +99,7 @@ export default function DashboardLayout({ children }) {
                             </button>
 
                             {/* Search */}
-                            <div className="hidden md:flex items-center space-x-2 bg-gray-100 rounded-xl px-4 py-2 w-80">
+                            <div className="hidden md:flex items-center space-x-2 bg-gray-100 rounded-lg px-4 py-2 w-80">
                                 <Search className="w-4 h-4 text-gray-400" />
                                 <input
                                     type="text"
@@ -123,7 +123,7 @@ export default function DashboardLayout({ children }) {
                                     <p className="text-sm font-semibold text-gray-900">John Carter</p>
                                     <p className="text-xs text-gray-500">Admin</p>
                                 </div>
-                                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold">
+                                <div className="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center text-white font-semibold">
                                     JC
                                 </div>
                                 <ChevronDown className="w-4 h-4 text-gray-400" />
