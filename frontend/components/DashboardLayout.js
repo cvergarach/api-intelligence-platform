@@ -40,7 +40,7 @@ export default function DashboardLayout({ children }) {
                             <Zap className="w-5 h-5 text-white" />
                         </div>
                         <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                            API Intel
+                            DATALIVE
                         </span>
                     </div>
                     <button
@@ -61,8 +61,8 @@ export default function DashboardLayout({ children }) {
                                 key={item.name}
                                 href={item.href}
                                 className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 ${isActive
-                                        ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/30'
-                                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/30'
+                                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                                     }`}
                             >
                                 <Icon className="w-5 h-5" />

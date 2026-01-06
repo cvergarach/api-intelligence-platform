@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { FileText, Database, Zap, TrendingUp, Activity, CheckCircle2 } from 'lucide-react';
 import axios from 'axios';
-import DashboardLayout from '../components/DashboardLayout';
 import StatsCard from '../components/StatsCard';
 import DocumentUploader from '../components/DocumentUploader';
 import APIList from '../components/APIList';
@@ -48,7 +47,7 @@ export default function Home() {
   };
 
   return (
-    <DashboardLayout>
+    <div>
       {/* Page header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">
@@ -225,6 +224,6 @@ export default function Home() {
           </div>
         </div>
       </div>
-    </DashboardLayout>
+    </div>
   );
 }
