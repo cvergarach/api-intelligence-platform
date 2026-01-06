@@ -8,9 +8,38 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// PROYECTOS - Contenedor principal
+model Project {
+  id          String   @id @default(uuid())
+  name        String
+  description String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  documents   Document[]
+  credentials ProjectCredential[]
+}
+
+// CREDENCIALES A NIVEL PROYECTO (compartidas)
+model ProjectCredential {
+  id        String   @id @default(uuid())
+  projectId String
+  name      String   // Nombre descriptivo: "API Key Producción"
+  type      String   // 'apikey', 'bearer', 'session', 'basic'
+  key       String   // Nombre del header/param
+  value     String   // Valor encriptado
+  metadata  Json?    // Info adicional
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
 // Documentos cargados (PDFs o URLs)
 model Document {
   id          String   @id @default(uuid())
+  projectId   String   // NUEVO: Pertenece a un proyecto
   name        String
   type        String   // 'pdf' o 'web'
   url         String?  // URL si es tipo web
@@ -19,6 +48,7 @@ model Document {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   apis        Api[]
   executions  ApiExecution[]
 }
@@ -63,7 +93,7 @@ model Endpoint {
   executions      ApiExecution[]
 }
 
-// Credenciales para ejecutar APIs
+// Credenciales para ejecutar APIs (nivel API - opcional)
 model Credential {
   id          String   @id @default(uuid())
   apiId       String
@@ -98,16 +128,19 @@ model ApiExecution {
 // Insights generados por IA
 model Insight {
   id              String   @id @default(uuid())
-  executionId     String
+  executionId     String?  // Opcional: puede ser de una ejecución específica
+  projectId       String?  // Opcional: insight general del proyecto
   aiModel         String   // Modelo usado para generar el insight
   title           String
   description     String   @db.Text
-  category        String   // 'trend', 'anomaly', 'opportunity', 'risk'
+  category        String   // 'trend', 'anomaly', 'opportunity', 'risk', 'summary'
   confidence      Float    // 0-100
+  findings        Json?    // Array de hallazgos clave
+  recommendations Json?    // Array de recomendaciones
   metadata        Json?
   createdAt       DateTime @default(now())
   
-  execution       ApiExecution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+  execution       ApiExecution? @relation(fields: [executionId], references: [id], onDelete: Cascade)
 }
 
 // Reportes generados
