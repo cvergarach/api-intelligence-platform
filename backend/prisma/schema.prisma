@@ -39,7 +39,7 @@ model ProjectCredential {
 // Documentos cargados (PDFs o URLs)
 model Document {
   id          String   @id @default(uuid())
-  projectId   String   // NUEVO: Pertenece a un proyecto
+  projectId   String?  // OPCIONAL: Pertenece a un proyecto (nullable para compatibilidad)
   name        String
   type        String   // 'pdf' o 'web'
   url         String?  // URL si es tipo web
@@ -48,7 +48,7 @@ model Document {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   
-  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project     Project?  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   apis        Api[]
   executions  ApiExecution[]
 }
