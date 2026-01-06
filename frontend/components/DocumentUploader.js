@@ -6,7 +6,7 @@ import { Upload, Globe, Loader2, CheckCircle, XCircle } from 'lucide-react';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-export default function DocumentUploader({ onDocumentProcessed }) {
+export default function DocumentUploader({ projectId, onDocumentProcessed }) {
   const [mode, setMode] = useState('pdf');
   const [file, setFile] = useState(null);
   const [url, setUrl] = useState('');
@@ -41,6 +41,9 @@ export default function DocumentUploader({ onDocumentProcessed }) {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('modelKey', selectedModel);
+      if (projectId) {
+        formData.append('projectId', projectId);
+      }
 
       await axios.post(`${API_URL}/api/documents/upload-pdf`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
@@ -85,22 +88,20 @@ export default function DocumentUploader({ onDocumentProcessed }) {
     <div className="space-y-6">
       <div className="card">
         <h2 className="text-2xl font-bold mb-6">Paso 1: Cargar Documentación</h2>
-        
+
         <div className="flex space-x-4 mb-6">
           <button
             onClick={() => setMode('pdf')}
-            className={`flex items-center space-x-2 px-4 py-2 rounded-lg ${
-              mode === 'pdf' ? 'bg-primary-600 text-white' : 'bg-gray-200 text-gray-700'
-            }`}
+            className={`flex items-center space-x-2 px-4 py-2 rounded-lg ${mode === 'pdf' ? 'bg-primary-600 text-white' : 'bg-gray-200 text-gray-700'
+              }`}
           >
             <Upload className="w-5 h-5" />
             <span>Subir PDF</span>
           </button>
           <button
             onClick={() => setMode('web')}
-            className={`flex items-center space-x-2 px-4 py-2 rounded-lg ${
-              mode === 'web' ? 'bg-primary-600 text-white' : 'bg-gray-200 text-gray-700'
-            }`}
+            className={`flex items-center space-x-2 px-4 py-2 rounded-lg ${mode === 'web' ? 'bg-primary-600 text-white' : 'bg-gray-200 text-gray-700'
+              }`}
           >
             <Globe className="w-5 h-5" />
             <span>Analizar Web</span>
@@ -179,9 +180,8 @@ export default function DocumentUploader({ onDocumentProcessed }) {
         )}
 
         {message && (
-          <div className={`mt-4 p-4 rounded-lg flex items-center space-x-2 ${
-            message.type === 'success' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
-          }`}>
+          <div className={`mt-4 p-4 rounded-lg flex items-center space-x-2 ${message.type === 'success' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
+            }`}>
             {message.type === 'success' ? (
               <CheckCircle className="w-5 h-5" />
             ) : (
