@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { PrismaClient } from '@prisma/client';
+import projectRoutes from './routes/projects.js';
 import documentRoutes from './routes/documents.js';
 import apiRoutes from './routes/apis.js';
 import executionRoutes from './routes/executions.js';
@@ -75,6 +76,8 @@ app.get('/health', (req, res) => {
 
 // Routes
 console.log('🛣️  [ROUTES] Registrando rutas...');
+app.use('/api/projects', projectRoutes);
+console.log('✅ [ROUTES] /api/projects registrada');
 app.use('/api/documents', documentRoutes);
 console.log('✅ [ROUTES] /api/documents registrada');
 app.use('/api/apis', apiRoutes);
